@@ -1,0 +1,19 @@
+Transfolio 1.0 (Februar 2018)
+-----------------------------
+
+Transfolio is a file transfer utility that connects a PC to the Atari Portfolio
+pocket computer over the parallel port. It communicates with the built-in file
+transfer software of the Portfolio.
+
+Contents of this package:
+README            This file
+transfolio.exe    Precompiled Windows executable (32 bit, command line)
+inpout32.dll      3rd party Library required by transfolio.exe
+transfolio.c      Source code
+Makefile          Linux Makefile
+transfolio        Linux executable (x86)
+
+The full documentation is currently only available in German language at
+http://www.pofowiki.de/doku.php?id=software:vorstellung:exchanges:transfolio
+
+(c) 2018 by Klaus Peichl (pei@freenet.de)
