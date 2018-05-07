@@ -292,7 +292,7 @@ static inline void waitClockHigh(void)
 {
   unsigned char byte = 0;
   while (!byte) {
-    byte = readPort() & 32;
+    byte = readPort() & 0x20;
   }
 }
 
@@ -307,7 +307,7 @@ static inline void waitClockLow(void)
 
 static inline unsigned char getBit(void)
 {
-  return( (readPort() & 16) >> 4 );
+  return( (readPort() & 0x10) >> 4 );
 }
 
 
@@ -574,13 +574,14 @@ void transmitFile(const char * source, const char * dest) {
   if (len > blocksize) {
     printf("Transmission consists of %d blocks of payload.\n", (len+blocksize-1)/blocksize);
   }
+	int readed;
   while (len > blocksize) {
-    fread(payload, sizeof(char), blocksize, file);
+    readed = fread(payload, sizeof(char), blocksize, file);
     sendBlock(payload, blocksize, VERB_COUNTER);
     len -= blocksize;
   }
 
-  fread(payload, sizeof(char), len, file);
+  readed = fread(payload, sizeof(char), len, file);
   if (len)
     sendBlock(payload, len, VERB_COUNTER);
   receiveBlock(controlData, CONTROL_BUFSIZE, VERB_ERRORS);
@@ -610,7 +611,7 @@ void receiveFile(const char * source, const char * dest) {
 
   /* Check if the destination parameter specifies a directory */
   if (!getcwd(startdir, sizeof(startdir))) {
-    fprintf(stderr, "Unexpected error: getcwd() failed!\n", dest);
+    fprintf(stderr, "Unexpected error: getcwd() failed!\n  %s", dest);
     exit(EXIT_FAILURE);
   }
   if (chdir(dest) == 0) {
@@ -712,7 +713,7 @@ void receiveFile(const char * source, const char * dest) {
   /* Change back to original directory */
   if (destIsDir) {
     if (chdir(startdir) != 0) {
-      fprintf(stderr, "Unexpected error: chdirs() failed!\n", startdir);
+      fprintf(stderr, "Unexpected error: chdirs(%s) failed!\n", startdir);
       exit(EXIT_FAILURE);
     }
   }
