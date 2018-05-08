@@ -211,6 +211,8 @@ int openPort(const char * device) {
 
 #elif defined(RASPIWIRING)
 int openPort() {
+	if (wiringPiSetup () == -1)
+		return -1 ;
 	//configure GPIO pins
 	pinMode(wiringClkIn, INPUT);
 	pinMode(wiringBitIn, INPUT);
