@@ -1,8 +1,12 @@
 VERSION := 1.0
 
 transfolio: transfolio.c
-	cc -O3 transfolio.c -o transfolio
+	cc -DPPDEV=\"/dev/parport0\" -O3 transfolio.c -o $@
 	strip transfolio
+
+rpfolio: transfolio.c
+	cc -DRASPIWIRED -IwiringPi -lwiringPi -O3 transfolio.c -o $@
+	strip $@
 
 transfolio.exe: transfolio.c
 	wine ~/bin/win/dm/bin/dmc.exe -r transfolio.c

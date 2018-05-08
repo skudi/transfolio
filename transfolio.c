@@ -76,10 +76,12 @@
 */
 
 /* #define DIRECTIO */
+/* #define RASPIWIRED */
 
 #ifndef __DMC__
 #ifndef DIRECTIO
-#define PPDEV            "/dev/parport0"
+#ifndef ASPIWIRED
+//#define PPDEV            "/dev/parport0"
 #endif
 #endif
 #define DATAPORT          0x378
@@ -94,24 +96,22 @@
 #include <ctype.h>                     /* tolower */
 #include <dirent.h>
 #include <time.h>                      /* usleep / nanosleep */
-#ifdef __DMC__
+#if defined(__DMC__)
 #include <direct.h>                    /* chdir */
 #else
 #include <unistd.h>                    /* usleep, chdir */
 #endif
 
-#ifdef PPDEV
+#if defined(PPDEV)
 
-#include <sys/ioctl.h>
-#include <fcntl.h>                     /* open */
-#include <linux/ppdev.h>               /* Parallel port device */
-int fd;                                /* File descriptor for opened parallel port */
-const char defaultDevice[] = PPDEV;    /* May be overridden with the -d option */
+ #include <sys/ioctl.h>
+ #include <fcntl.h>                     /* open */
+ #include <linux/ppdev.h>               /* Parallel port device */
+ int fd;                                /* File descriptor for opened parallel port */
+ const char defaultDevice[] = PPDEV;    /* May be overridden with the -d option */
 
-#else
-
-#ifdef __DMC__
- #ifdef DIRECTIO
+#elif __DMC__
+ #if defined(DIRECTIO)
  #include <dos.h>                       /* Direct port access for DOS */
  #else
  #include <windef.h>
@@ -123,13 +123,24 @@ const char defaultDevice[] = PPDEV;    /* May be overridden with the -d option *
  inpfuncPtr inp32;
  oupfuncPtr oup32;
  #endif
+#elif defined(RASPIWIRED)
+ #include <wiringPi.h>
 #else
  #include <sys/io.h>                    /* Direct port access for Linux */
 #endif
 
 #endif
 
-#ifndef PPDEV
+#if defined(RASPIWIRED)
+//default GPIO pins
+const unsigned int wiredClkOut = 7; //GPIO07 pin 7
+                                   //GND    pin 9
+const unsigned int wiredBitOut = 0; //GPIO00 pin 11
+const unsigned int wiredClkIn  = 2; //GPIO02 pin 13
+const unsigned int wiredBitIn  = 3; //GPIO03 pin 15
+#endif
+
+#if defined(DIRECTIO) && !defined(RASPIWIRED)
 const unsigned short defaultPort = DATAPORT;
 unsigned short dataPort;
 unsigned short statusPort;
@@ -173,7 +184,7 @@ unsigned char receiveInit[82] =
 const unsigned char receiveFinish[3] = { 0x20, 0x00, 0x03 };
 
 
-#ifdef PPDEV
+#if defined(PPDEV)
 #include <time.h>
 
 /*
@@ -198,6 +209,15 @@ int openPort(const char * device) {
 	return fd;
 }
 
+#elif defined(RASPIWIRED)
+int openPort() {
+	//configure GPIO pins
+	pinMode(wiredClkIn, INPUT);
+	pinMode(wiredBitIn, INPUT);
+	pinMode(wiredClkOut, OUTPUT);
+	pinMode(wiredBitOut, OUTPUT);
+	return 0;
+}
 #else
 
 /*
@@ -207,8 +227,8 @@ int openPort(const unsigned short port) {
 	dataPort = port;
 	statusPort = port + 1;
 
-#ifdef __DMC__
-#ifdef DIRECTIO
+#if defined(__DMC__)
+#if defined(DIRECTIO)
 	return 0;
 #else
 	hLib = LoadLibrary("inpout32.dll");
@@ -243,9 +263,9 @@ int openPort(const unsigned short port) {
 */
 static inline unsigned char readPort(void) {
 	unsigned char byte;
-#ifdef __DMC__
+#if defined(__DMC__)
 
-#ifdef DIRECTIO
+#if defined(DIRECTIO)
 	byte = inp(statusPort);
 #else
 	byte = (inp32)(statusPort);
@@ -253,8 +273,10 @@ static inline unsigned char readPort(void) {
 
 #else
 
-#ifdef PPDEV
+#if defined(PPDEV)
 	ioctl (fd, PPRSTATUS, &byte);
+#elif defined(RASPIWIRED)
+	byte = (digitalRead(wiredClkIn)) << 5 | (digitalRead(wiredBitIn) << 4); 
 #else
 	byte = inb(statusPort);
 #endif
@@ -268,9 +290,9 @@ static inline unsigned char readPort(void) {
 	Output a byte to the data register of the parallel port
 */
 static inline void writePort(const unsigned char byte) {
-#ifdef __DMC__
+#if defined(__DMC__)
 
-#ifdef DIRECTIO
+#if defined(DIRECTIO)
 	outp(dataPort, byte);
 #else
 	(oup32)(dataPort, byte);
@@ -278,8 +300,11 @@ static inline void writePort(const unsigned char byte) {
 
 #else
 
-#ifdef DIRECTIO
+#if defined(DIRECTIO)
 	outb(byte, dataPort);
+#elif defined(RASPIWIRED)
+	digitalWrite(wiredBitOut, byte & 0x01);
+	digitalWrite(wiredClkOut, (byte >> 1) & 0x01);
 #else
 	ioctl (fd, PPWDATA, &byte);
 #endif
@@ -300,7 +325,7 @@ static inline void waitClockLow(void)
 {
 	unsigned char byte = 1;
 	while (byte) {
-		byte = readPort() & 32;
+		byte = readPort() & 0x20;
 	}
 }
 
@@ -342,7 +367,7 @@ void sendByte(unsigned char byte)
 	int i;
 	unsigned char b;
 
-#ifdef __DMC__
+#if defined(__DMC__)
 	/* Should be usleep(50), but smaller arguments than 1000 result in no delay */
 	usleep(1000);
 #else
@@ -817,8 +842,10 @@ void composePofoName(char *source, char * dest, char *pofoName, int sourcecount)
 
 int main(int argc, char* argv[])
 {
-#ifdef PPDEV
+#if defined(PPDEV)
 	const char * device = defaultDevice;
+#elif defined(RASPIWIRED)
+	//TODO?
 #else
 	unsigned short port = defaultPort;
 #endif
@@ -836,7 +863,7 @@ int main(int argc, char* argv[])
 	*/
 	for (i=1; i<argc; i++) {
 		if (argv[i][0]=='-'
-#ifdef __DMC__
+#if defined(__DMC__)
 				|| argv[i][0]=='/'
 #endif
 				) {
@@ -859,10 +886,12 @@ int main(int argc, char* argv[])
 				case 'f':
 					force = 1;
 					break;
-#ifdef PPDEV
+#if defined(PPDEV)
 				case 'd':
 					device = NULL;  /* the next argument is used as the device name */
 					break;
+#elif defined(RASPIWIRED)
+					//TODO: param for wired: pin list
 #else
 				case 'p':
 					port = 0;       /* the next argument is used as the port address */
@@ -875,11 +904,13 @@ int main(int argc, char* argv[])
 		}
 		else {
 			/* Command line argument */
-#ifdef PPDEV
+#if defined(PPDEV)
 			if (!device) {
 				device = argv[i];
 			}
 			else
+#elif defined(RASPIWIRED)
+					//TODO: parse pin list for wired
 #else
 			if (!port) {
 				char * endptr;
@@ -911,15 +942,19 @@ int main(int argc, char* argv[])
 			(mode == 'l' && sourcelist == NULL)
 			) {
 		printf("\nSyntax: %s "
-#ifdef PPDEV
+#if defined(PPDEV)
 					 "[-d DEVICE] "
+#elif defined(RASPIWIRED)
+					//TODO: param for wired: pin list
 #else
 					 "[-p ADR] "
 #endif
 					 "[-f] {-t|-r} SOURCE DEST \n", argv[0]);
 		printf("  or    %s "
-#ifdef PPDEV
+#if defined(PPDEV)
 					 "[-d DEVICE] "
+#elif defined(RASPIWIRED)
+					//TODO: param for wired: pin list
 #else
 					 "[-p ADR] "
 #endif
@@ -932,8 +967,10 @@ int main(int argc, char* argv[])
 		printf("    In a Unix like shell, quoting is required.\n");
 		printf("-l  List directory files on Portfolio matching PATTERN \n");
 		printf("-f  Force overwriting an existing file \n");
-#ifdef PPDEV
+#if defined(PPDEV)
 		printf("-d  Select parallel port device (default: %s) \n", defaultDevice);
+#elif defined(RASPIWIRED)
+					//TODO: param for wired: pin list
 #else
 		printf("-p  Select parallel port address (default: 0x%x) \n", defaultPort);
 #endif
@@ -962,8 +999,10 @@ int main(int argc, char* argv[])
 		Open the parallel port
 	*/
 	if (openPort(
-#ifdef PPDEV
+#if defined(PPDEV)
 			device
+#elif defined(RASPIWIRED)
+					//TODO: pin list for wired (struct)
 #else
 			port
 #endif
@@ -1012,7 +1051,7 @@ int main(int argc, char* argv[])
 	}
 
 
-#ifdef PPDEV
+#if defined(PPDEV)
 	/*
 		Close the parallel port device
 	*/
@@ -1020,7 +1059,10 @@ int main(int argc, char* argv[])
 	close(fd);
 #endif
 
-#if defined(__DMC__) && !defined(DIRECTIO)
+#if defined(RASPIWIRED)
+	pinMode(wiredBitOut, INPUT);
+	pinMode(wiredClkOut, INPUT);
+#elif defined(__DMC__) && !defined(DIRECTIO)
 	FreeLibrary(hLib);
 #endif
 
