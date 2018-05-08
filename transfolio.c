@@ -76,12 +76,12 @@
 */
 
 /* #define DIRECTIO */
-/* #define RASPIWIRED */
+/* #define RASPIWIRING */
 
 #ifndef __DMC__
 #ifndef DIRECTIO
-#ifndef ASPIWIRED
-//#define PPDEV            "/dev/parport0"
+#ifndef RASPIWIRING
+#define PPDEV            "/dev/parport0"
 #endif
 #endif
 #define DATAPORT          0x378
@@ -123,7 +123,7 @@
  inpfuncPtr inp32;
  oupfuncPtr oup32;
  #endif
-#elif defined(RASPIWIRED)
+#elif defined(RASPIWIRING)
  #include <wiringPi.h>
 #else
  #include <sys/io.h>                    /* Direct port access for Linux */
@@ -131,16 +131,16 @@
 
 #endif
 
-#if defined(RASPIWIRED)
+#if defined(RASPIWIRING)
 //default GPIO pins
-const unsigned int wiredClkOut = 7; //GPIO07 pin 7
+const unsigned int wiringClkOut = 7; //GPIO07 pin 7
                                    //GND    pin 9
-const unsigned int wiredBitOut = 0; //GPIO00 pin 11
-const unsigned int wiredClkIn  = 2; //GPIO02 pin 13
-const unsigned int wiredBitIn  = 3; //GPIO03 pin 15
+const unsigned int wiringBitOut = 0; //GPIO00 pin 11
+const unsigned int wiringClkIn  = 2; //GPIO02 pin 13
+const unsigned int wiringBitIn  = 3; //GPIO03 pin 15
 #endif
 
-#if defined(DIRECTIO) && !defined(RASPIWIRED)
+#if defined(DIRECTIO) && !defined(RASPIWIRING)
 const unsigned short defaultPort = DATAPORT;
 unsigned short dataPort;
 unsigned short statusPort;
@@ -209,13 +209,13 @@ int openPort(const char * device) {
 	return fd;
 }
 
-#elif defined(RASPIWIRED)
+#elif defined(RASPIWIRING)
 int openPort() {
 	//configure GPIO pins
-	pinMode(wiredClkIn, INPUT);
-	pinMode(wiredBitIn, INPUT);
-	pinMode(wiredClkOut, OUTPUT);
-	pinMode(wiredBitOut, OUTPUT);
+	pinMode(wiringClkIn, INPUT);
+	pinMode(wiringBitIn, INPUT);
+	pinMode(wiringClkOut, OUTPUT);
+	pinMode(wiringBitOut, OUTPUT);
 	return 0;
 }
 #else
@@ -275,8 +275,8 @@ static inline unsigned char readPort(void) {
 
 #if defined(PPDEV)
 	ioctl (fd, PPRSTATUS, &byte);
-#elif defined(RASPIWIRED)
-	byte = (digitalRead(wiredClkIn)) << 5 | (digitalRead(wiredBitIn) << 4); 
+#elif defined(RASPIWIRING)
+	byte = (digitalRead(wiringClkIn)) << 5 | (digitalRead(wiringBitIn) << 4); 
 #else
 	byte = inb(statusPort);
 #endif
@@ -302,9 +302,9 @@ static inline void writePort(const unsigned char byte) {
 
 #if defined(DIRECTIO)
 	outb(byte, dataPort);
-#elif defined(RASPIWIRED)
-	digitalWrite(wiredBitOut, byte & 0x01);
-	digitalWrite(wiredClkOut, (byte >> 1) & 0x01);
+#elif defined(RASPIWIRING)
+	digitalWrite(wiringBitOut, byte & 0x01);
+	digitalWrite(wiringClkOut, (byte >> 1) & 0x01);
 #else
 	ioctl (fd, PPWDATA, &byte);
 #endif
@@ -844,7 +844,7 @@ int main(int argc, char* argv[])
 {
 #if defined(PPDEV)
 	const char * device = defaultDevice;
-#elif defined(RASPIWIRED)
+#elif defined(RASPIWIRING)
 	//TODO?
 #else
 	unsigned short port = defaultPort;
@@ -890,7 +890,7 @@ int main(int argc, char* argv[])
 				case 'd':
 					device = NULL;  /* the next argument is used as the device name */
 					break;
-#elif defined(RASPIWIRED)
+#elif defined(RASPIWIRING)
 					//TODO: param for wired: pin list
 #else
 				case 'p':
@@ -909,7 +909,7 @@ int main(int argc, char* argv[])
 				device = argv[i];
 			}
 			else
-#elif defined(RASPIWIRED)
+#elif defined(RASPIWIRING)
 					//TODO: parse pin list for wired
 #else
 			if (!port) {
@@ -944,7 +944,7 @@ int main(int argc, char* argv[])
 		printf("\nSyntax: %s "
 #if defined(PPDEV)
 					 "[-d DEVICE] "
-#elif defined(RASPIWIRED)
+#elif defined(RASPIWIRING)
 					//TODO: param for wired: pin list
 #else
 					 "[-p ADR] "
@@ -953,7 +953,7 @@ int main(int argc, char* argv[])
 		printf("  or    %s "
 #if defined(PPDEV)
 					 "[-d DEVICE] "
-#elif defined(RASPIWIRED)
+#elif defined(RASPIWIRING)
 					//TODO: param for wired: pin list
 #else
 					 "[-p ADR] "
@@ -969,7 +969,7 @@ int main(int argc, char* argv[])
 		printf("-f  Force overwriting an existing file \n");
 #if defined(PPDEV)
 		printf("-d  Select parallel port device (default: %s) \n", defaultDevice);
-#elif defined(RASPIWIRED)
+#elif defined(RASPIWIRING)
 					//TODO: param for wired: pin list
 #else
 		printf("-p  Select parallel port address (default: 0x%x) \n", defaultPort);
@@ -1001,7 +1001,7 @@ int main(int argc, char* argv[])
 	if (openPort(
 #if defined(PPDEV)
 			device
-#elif defined(RASPIWIRED)
+#elif defined(RASPIWIRING)
 					//TODO: pin list for wired (struct)
 #else
 			port
@@ -1059,9 +1059,9 @@ int main(int argc, char* argv[])
 	close(fd);
 #endif
 
-#if defined(RASPIWIRED)
-	pinMode(wiredBitOut, INPUT);
-	pinMode(wiredClkOut, INPUT);
+#if defined(RASPIWIRING)
+	pinMode(wiringBitOut, INPUT);
+	pinMode(wiringClkOut, INPUT);
 #elif defined(__DMC__) && !defined(DIRECTIO)
 	FreeLibrary(hLib);
 #endif

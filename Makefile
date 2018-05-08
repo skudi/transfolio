@@ -5,7 +5,7 @@ transfolio: transfolio.c
 	strip transfolio
 
 rpfolio: transfolio.c
-	cc -DRASPIWIRED -IwiringPi -lwiringPi -O3 transfolio.c -o $@
+	cc -DRASPIWIRING -IwiringPi -lwiringPi -O3 transfolio.c -o $@
 	strip $@
 
 transfolio.exe: transfolio.c
