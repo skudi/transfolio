@@ -1,14 +1,22 @@
 Compilation on RaspberyPi (Debian/Raspbian 9.13)
 - clone or unpack sources, and go into repository dir:
-  `git clone git@github.com:skudi/transfolio.git`
-  `cd transfolio`
+  ```
+  git clone git@github.com:skudi/transfolio.git
+  cd transfolio
+  ```
 - install dependencies:
   The wiringPi libraries, headers and gpio command
-	`sudo apt install wiringpi`
+  ```
+  sudo apt install wiringpi
+  ```
 - build rpfolio
-  `make rpfolio`
+  ```
+  make rpfolio
+  ```
 - test
-  `./rpfolio -l "*.*"`
+  ```
+  ./rpfolio -l "*.*"
+  ```
 
 
 Pinout is defined in transfolio.c:
