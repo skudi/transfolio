@@ -718,6 +718,7 @@ void receiveFile(const char * source, const char * dest) {
 		}
 
 		total = controlData[7] + ((int)controlData[8] << 8) + ((int)controlData[9] << 16);
+		printf("File size: %d bytes.\n", total);
 
 		if (total > blocksize) {
 			printf("Transmission consists of %d blocks of payload.\n", (total+blocksize-1)/blocksize);
